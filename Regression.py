@@ -136,7 +136,9 @@ data = data.drop('state', axis=1)
 #features der skal standardiseres er: 
     #amt, lat, long, city_pop, merch_lat, merch_long, 
 from sklearn.preprocessing import StandardScaler
-std_scaler = StandardScaler()
+from sklearn.preprocessing import MinMaxScaler
+
+std_scaler = MinMaxScaler()
 
 #standardiseret amt
 amt_values = data['amt']
@@ -261,6 +263,9 @@ ND_array = data["ND"].values.reshape(-1, 1)
 CT_array = data["CT"].values.reshape(-1, 1)
 RI_array = data["RI"].values.reshape(-1, 1)
 DE_array = data["DE"].values.reshape(-1, 1)
+
+
+
 
 is_fraud_array = data["is_fraud"].values.reshape(-1, 1)
 
@@ -473,7 +478,6 @@ labels = [
         'CT',
         'RI',
         'DE'
-
 
     ]
 
