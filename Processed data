@@ -16,9 +16,6 @@ cat_encoder = OneHotEncoder()
 
 
 
-job_cat = data[['job']]
-job_cat_1hot = cat_encoder.fit_transform(job_cat)
-job_cat_1hot_array = job_cat_1hot.toarray()
 
 
 
