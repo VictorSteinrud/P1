@@ -1,0 +1,63 @@
+
+import pandas as pd
+import statsmodels.api as sm
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import OneHotEncoder
+import os
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
+import datetime as dt
+from sklearn.metrics import confusion_matrix
+from imblearn.over_sampling import SMOTE
+
+
+data = pd.read_csv(r"C:\Users\Victor Steinrud\Downloads\fraudTrain.csv")
+
+
+data['age']=dt.date.today().year-pd.to_datetime(data['dob']).dt.year #gør dob til en kontinuær, numerisk feature
+data['hour']=pd.to_datetime(data['trans_date_trans_time']).dt.hour 
+data['day']=pd.to_datetime(data['trans_date_trans_time']).dt.dayofweek
+data['month']=pd.to_datetime(data['trans_date_trans_time']).dt.month
+
+train=data[['category','amt','zip','lat','long','city_pop','merch_lat','merch_long','age','hour', 'day', 'month','is_fraud']]#tager de relavante kolloner fra data
+
+train=pd.get_dummies(train, drop_first=True)            #1hot encoder alle kategoriske kolonner i train
+y_train=train['is_fraud'].values                        #assigner values fra is_fraud kolonnen til y_train
+X_train=train.drop("is_fraud", axis='columns').values   #dropper is_fraud fra X 
+
+
+test=pd.read_csv(r"C:\Users\Victor Steinrud\Downloads\fraudTest.csv")
+test['age']=dt.date.today().year-pd.to_datetime(test['dob']).dt.year #gør dob til en kontinuær, numerisk feature
+test['hour']=pd.to_datetime(test['trans_date_trans_time']).dt.hour
+test['day']=pd.to_datetime(test['trans_date_trans_time']).dt.dayofweek
+test['month']=pd.to_datetime(test['trans_date_trans_time']).dt.month
+
+test=test[['category','amt','zip','lat','long','city_pop','merch_lat','merch_long','age', 'hour', 'day', 'month', 'is_fraud']]
+test=pd.get_dummies(test, drop_first=True)              #1hot enconder alle kategoriske kolonner i test
+y_test=test['is_fraud'].values                          #assigner values fra is_fraud kolonnen til y_test
+X_test=test.drop("is_fraud", axis='columns').values     #dropper is_fraud fra x_test
+
+
+
+
+smote = SMOTE(random_state=42)
+X_resampled, y_resampled = smote.fit_resample(X_train, y_train) #bruger SMOTE: Synthetic Minority Over-sampling Technique 
+                                                                #for tilføje samme mængde is_fraud == 1 som is_fraud == 0
+
+
+from sklearn.ensemble import RandomForestClassifier
+model = RandomForestClassifier(random_state=42)                             #assigner modellen
+print('MODEL TRAINING...')                                                  #så du ved den træner DUUH
+model.fit(X_resampled,y_resampled)                                          #træner modellen med den oversamplede data
+y_pred=model.predict(X_test)                                                #tester modellen på x_test
+print('Classification report:\n', classification_report(y_test, y_pred))    #classification_report fra sklearn.metrics 
+                                                                            #beregner bl.a. precision og recall for alle klasser i klassifikationsproblemet
+conf_mat = confusion_matrix(y_true=y_test, y_pred=y_pred)                   #confusion matrix ud fra actual value: y_test og predicted value: y_pred
+print('Confusion matrix:\n', conf_mat)                                      #printer CM i terminalen
+print('Share of Non-Fraud in Test Data:', 1-round(y_test.sum()/len(y_test),4))  #her tager vi mængden af is_fraud fra y_test og divider med len(y_test) 
+                                                                                #det giver os andelen af is_fraud instances og minusser med 1 for at vise 
+                                                                                #andelen af non fraud i testsættet
