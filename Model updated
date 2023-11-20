@@ -5,10 +5,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction import FeatureHasher
 import numpy as np
-
-
 
 data_train = pd.read_csv(r"C:\Users\Victor Steinrud\Downloads\fraudTrain.csv")
 data_test = pd.read_csv(r"C:\Users\Victor Steinrud\Downloads\fraudTest.csv")
@@ -18,62 +15,28 @@ def preprocessing(data):
     data['hour'] = pd.to_datetime(data['trans_date_trans_time']).dt.hour
     data['day'] = pd.to_datetime(data['trans_date_trans_time']).dt.dayofweek
     data['month'] = pd.to_datetime(data['trans_date_trans_time']).dt.month
-    data = data[['category', 'amt', 'zip', 'lat', 'long', 'city_pop', 'merch_lat', 'merch_long', 'is_fraud', 'age', 'hour', 'day', 'month', 'gender']]
+    data = data[['category', 'amt', 'zip', 'lat', 'long', 'city_pop', 'merch_lat', 'merch_long', 'is_fraud', 'age', 'hour', 'day', 'month']]
     data = pd.get_dummies(data, drop_first=True)
+    data = remove_highly_correlated_features(data=data)
     X = data.drop('is_fraud', axis='columns').values
     y = data['is_fraud'].values
-    data = remove_highly_correlated_features(data=data)
-
-
-    return data
-
-
-def feature_hash(data, columns, n_features=50):
-    hasher = FeatureHasher(n_features=n_features, input_type='string')
-    for col in columns:
-        data[col] = data[col].astype(str)
-        hashed_features = hasher.transform(data[col].apply(lambda x: [x]))
-        hashed_df = pd.DataFrame(hashed_features.toarray(), columns=[f"{col}_hash_{i}" for i in range(n_features)])
-        data = pd.concat([data, hashed_df], axis=1).drop(col, axis=1)
-    return data
+    return data, X, y
 
 def remove_highly_correlated_features(data, threshold=0.8):
     corr_matrix = data.corr().abs()
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
     to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
-    print(f"Dropping highly correlated columns: {to_drop}")
     data = data.drop(to_drop, axis=1)
     
     return data
 
-
-train = preprocessing(data_train)
-test = preprocessing(data_test)
-
-train = pd.concat([train, data_train[['city', 'street', 'job', 'cc_num', 'merchant', 'first', 'last', 'street']]], axis=1)
-test = pd.concat([test, data_test[['city', 'street', 'job', 'cc_num', 'merchant', 'first', 'last', 'street']]], axis=1)
-
-
-
-columns_to_hash = ['city', 'street', 'job']
-train = feature_hash(train, columns_to_hash, n_features=50)
-test = feature_hash(test, columns_to_hash)
-
-y_train = train['is_fraud']
-y_test = test['is_fraud']
-X_train = train.drop('is_fraud', axis=1)
-X_test = test.drop('is_fraud', axis=1)
-
-
+train, X_train, y_train = preprocessing(data_train)
+test, X_test, y_test = preprocessing(data_test)
 
 smote = SMOTE(random_state=42)
 X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
 
-
-
 rf = RandomForestClassifier()
-
-
 rf.fit(X_train_resampled, y_train_resampled)
 y_pred = rf.predict(X_test)
 
